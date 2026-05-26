@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Days Since Last Arkie Hang</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky-top: #fde8e4;
+    --sky-mid: #fce4ec;
+    --sky-bottom: #e8d5e8;
+    --water-top: #c5e4ec;
+    --water-mid: #a5d0dd;
+    --water-deep: #88bccc;
+    --cream: #fff8ee;
+    --ink: #5a4a52;
+    --ink-soft: #8a7682;
+    --peach: #ffb8a3;
+    --peach-deep: #f49580;
+    --mint: #b8e0d0;
+    --butter: #ffe4a8;
+    --lavender: #d8c8e8;
+    --rose: #f7c8c8;
+    --shadow: rgba(90, 74, 82, 0.12);
+    --shadow-deep: rgba(90, 74, 82, 0.2);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Quicksand', 'Comic Sans MS', sans-serif;
+    color: var(--ink);
+    background: var(--sky-top);
+  }
+
+  .scene-wrapper {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .scene-wrapper svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    padding: 6vh 20px 0;
+    z-index: 10;
+  }
+
+  .header {
+    text-align: center;
+    pointer-events: auto;
+    background: rgba(255, 248, 238, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 22px 38px;
+    border-radius: 28px;
+    box-shadow: 0 8px 32px var(--shadow-deep), inset 0 1px 0 rgba(255,255,255,0.8);
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    margin-bottom: 22px;
+    max-width: 92vw;
+  }
+
+  .counter {
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(1.5rem, 4vw, 2.6rem);
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    margin: 0;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+
+  .counter .number {
+    color: var(--peach-deep);
+    display: inline-block;
+    min-width: 1.2ch;
+    font-weight: 700;
+  }
+
+  .subtitle {
+    margin: 8px 0 0 0;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    font-weight: 500;
+    font-style: italic;
+  }
+
+  .hang-btn {
+    pointer-events: auto;
+    background: linear-gradient(180deg, #ffc4b3 0%, var(--peach-deep) 100%);
+    color: var(--cream);
+    border: none;
+    padding: 16px 42px;
+    font-size: 1.1rem;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #d97562, 0 10px 24px var(--shadow-deep), inset 0 1px 0 rgba(255,255,255,0.5);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+    letter-spacing: 0.3px;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.08);
+  }
+
+  .hang-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 9px 0 #d97562, 0 14px 28px var(--shadow-deep), inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+
+  .hang-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #d97562, 0 4px 8px var(--shadow-deep), inset 0 1px 0 rgba(255,255,255,0.5);
+  }
+
+  /* ========== Animations ========== */
+  @keyframes bob-boat {
+    0%, 100% { transform: translateY(0px) rotate(-1.8deg); }
+    50% { transform: translateY(-7px) rotate(1.8deg); }
+  }
+
+  @keyframes bob-1 {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3.5px); }
+  }
+  @keyframes bob-2 {
+    0%, 100% { transform: translateY(-1px); }
+    50% { transform: translateY(-4.5px); }
+  }
+  @keyframes bob-3 {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2.5px); }
+  }
+
+  @keyframes wave-roll-1 {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-120px); }
+  }
+  @keyframes wave-roll-2 {
+    0% { transform: translateX(-60px); }
+    100% { transform: translateX(60px); }
+  }
+  @keyframes wave-roll-3 {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100px); }
+  }
+
+  @keyframes cloud-drift-1 {
+    0% { transform: translateX(-30px); }
+    100% { transform: translateX(30px); }
+  }
+  @keyframes cloud-drift-2 {
+    0% { transform: translateX(40px); }
+    100% { transform: translateX(-40px); }
+  }
+
+  @keyframes blink-slow {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+  }
+
+  @keyframes sparkle {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  @keyframes sun-glow {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.05); }
+  }
+
+  @keyframes bird-fly {
+    0% { transform: translateX(-50px) translateY(0); }
+    50% { transform: translateX(50vw) translateY(-15px); }
+    100% { transform: translateX(110vw) translateY(0); }
+  }
+
+  @keyframes bubble-pop {
+    0% { opacity: 0; transform: scale(0.6) translateY(8px); }
+    15% { opacity: 1; transform: scale(1.05) translateY(0); }
+    20% { transform: scale(1) translateY(0); }
+    85% { opacity: 1; transform: scale(1) translateY(0); }
+    100% { opacity: 0; transform: scale(0.9) translateY(-4px); }
+  }
+
+  .boat-group {
+    transform-origin: 600px 480px;
+    animation: bob-boat 4.2s ease-in-out infinite;
+  }
+  .giraffe { animation: bob-1 3.4s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  .monkey { animation: bob-2 3.9s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  .pig { animation: bob-3 4.3s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+
+  .wave-1 { animation: wave-roll-1 9s linear infinite; }
+  .wave-2 { animation: wave-roll-2 7s ease-in-out infinite alternate; }
+  .wave-3 { animation: wave-roll-3 12s linear infinite; }
+
+  .cloud-1 { animation: cloud-drift-1 24s ease-in-out infinite alternate; }
+  .cloud-2 { animation: cloud-drift-2 30s ease-in-out infinite alternate; }
+  .cloud-3 { animation: cloud-drift-1 28s ease-in-out infinite alternate-reverse; }
+
+  .eye-blink { animation: blink-slow 5s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  .eye-blink-2 { animation: blink-slow 5s ease-in-out infinite; animation-delay: 0.5s; transform-origin: center; transform-box: fill-box; }
+  .eye-blink-3 { animation: blink-slow 6s ease-in-out infinite; animation-delay: 1.2s; transform-origin: center; transform-box: fill-box; }
+
+  .sparkle { animation: sparkle 2.5s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  .sparkle-2 { animation: sparkle 3s ease-in-out infinite; animation-delay: 0.8s; transform-origin: center; transform-box: fill-box; }
+  .sparkle-3 { animation: sparkle 2.2s ease-in-out infinite; animation-delay: 1.5s; transform-origin: center; transform-box: fill-box; }
+
+  .sun-aura { animation: sun-glow 4s ease-in-out infinite; transform-origin: 1080px 200px; }
+  .bird { animation: bird-fly 22s linear infinite; }
+
+  /* Thought bubble */
+  .thought-bubble {
+    opacity: 0;
+    transform-origin: bottom center;
+    transform-box: fill-box;
+  }
+  .thought-bubble.show {
+    animation: bubble-pop 4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  /* ========== Modal ========== */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(90, 74, 82, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: fade-in 0.25s ease-out;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes pop-in {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .modal-backdrop.open {
+    display: flex;
+  }
+
+  .modal {
+    background: var(--cream);
+    border-radius: 28px;
+    padding: 36px 32px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(90, 74, 82, 0.25), inset 0 1px 0 rgba(255,255,255,0.8);
+    text-align: center;
+    border: 1.5px solid rgba(255, 255, 255, 0.8);
+    animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+
+  .modal::before {
+    content: "♡";
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    color: var(--rose);
+    font-size: 1.2rem;
+    opacity: 0.6;
+  }
+
+  .modal h2 {
+    font-family: 'Fredoka', sans-serif;
+    margin: 0 0 24px 0;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .modal button, .modal input {
+    font-family: 'Quicksand', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 2px solid #f0e4d4;
+    background: var(--cream);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .modal .primary {
+    background: linear-gradient(180deg, #ffc4b3 0%, var(--peach-deep) 100%);
+    color: var(--cream);
+    border-color: transparent;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    box-shadow: 0 4px 0 #d97562, 0 6px 12px var(--shadow);
+  }
+
+  .modal .primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #d97562, 0 8px 16px var(--shadow);
+  }
+
+  .modal .primary:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #d97562;
+  }
+
+  .modal input[type="date"] {
+    cursor: pointer;
+    font-family: 'Quicksand', sans-serif;
+  }
+
+  .modal input:focus, .modal button:focus {
+    outline: none;
+    border-color: var(--peach-deep);
+  }
+
+  .modal .secondary {
+    background: transparent;
+    color: var(--ink-soft);
+    border-color: transparent;
+    font-size: 0.9rem;
+    padding: 8px;
+    font-weight: 500;
+  }
+
+  .modal .secondary:hover {
+    color: var(--ink);
+  }
+
+  .modal .or-divider {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    margin: 2px 0;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .modal .or-divider::before,
+  .modal .or-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #e8d8c8;
+  }
+</style>
+</head>
+<body>
+  <div class="scene-wrapper">
+    <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="skyGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#fde8e4"/>
+          <stop offset="50%" stop-color="#fce4ec"/>
+          <stop offset="100%" stop-color="#e8d5e8"/>
+        </linearGradient>
+        <linearGradient id="waterGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#d4eef4"/>
+          <stop offset="50%" stop-color="#a5d0dd"/>
+          <stop offset="100%" stop-color="#7aafc2"/>
+        </linearGradient>
+        <radialGradient id="sunGrad">
+          <stop offset="0%" stop-color="#fff4d4" stop-opacity="1"/>
+          <stop offset="60%" stop-color="#ffe4a8" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="#ffd4a0" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="sunAura">
+          <stop offset="0%" stop-color="#fff4d4" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="#fff4d4" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="boatGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#e8c4a0"/>
+          <stop offset="100%" stop-color="#c89878"/>
+        </linearGradient>
+        <linearGradient id="boatGradDark" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#c89878"/>
+          <stop offset="60%" stop-color="#a47858"/>
+          <stop offset="100%" stop-color="#7a5638"/>
+        </linearGradient>
+        <linearGradient id="sailGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#fff8ee"/>
+          <stop offset="100%" stop-color="#ffe8d8"/>
+        </linearGradient>
+        <linearGradient id="sailGrad2" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#fde8e4"/>
+          <stop offset="100%" stop-color="#f7c8c8"/>
+        </linearGradient>
+        <!-- Radial gradients for soft animal shading -->
+        <radialGradient id="giraffeShade" cx="35%" cy="35%">
+          <stop offset="0%" stop-color="#ffe4b8"/>
+          <stop offset="100%" stop-color="#f0c080"/>
+        </radialGradient>
+        <radialGradient id="monkeyShade" cx="35%" cy="35%">
+          <stop offset="0%" stop-color="#d8b89a"/>
+          <stop offset="100%" stop-color="#b89878"/>
+        </radialGradient>
+        <radialGradient id="pigShade" cx="35%" cy="35%">
+          <stop offset="0%" stop-color="#ffd4dd"/>
+          <stop offset="100%" stop-color="#f4b4c4"/>
+        </radialGradient>
+        <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+          <feOffset dx="0" dy="3"/>
+          <feComponentTransfer><feFuncA type="linear" slope="0.2"/></feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="boat-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+          <feOffset dx="0" dy="4"/>
+          <feComponentTransfer><feFuncA type="linear" slope="0.25"/></feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="bubble-shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+          <feOffset dx="0" dy="2"/>
+          <feComponentTransfer><feFuncA type="linear" slope="0.18"/></feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- Sky -->
+      <rect x="0" y="0" width="1200" height="540" fill="url(#skyGrad)"/>
+
+      <!-- Sun aura -->
+      <circle class="sun-aura" cx="1080" cy="200" r="180" fill="url(#sunAura)"/>
+      <circle cx="1080" cy="200" r="65" fill="url(#sunGrad)"/>
+      <circle cx="1080" cy="200" r="48" fill="#fff4d4"/>
+      <ellipse cx="1062" cy="208" rx="6" ry="4" fill="#ffc8c8" opacity="0.7"/>
+      <ellipse cx="1098" cy="208" rx="6" ry="4" fill="#ffc8c8" opacity="0.7"/>
+      <path d="M 1070 200 Q 1080 208 1090 200" stroke="#d49060" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="1068" cy="195" rx="2.5" ry="3.5" fill="#5a4a52"/>
+      <ellipse cx="1092" cy="195" rx="2.5" ry="3.5" fill="#5a4a52"/>
+      <circle cx="1069" cy="194" r="0.8" fill="#fff"/>
+      <circle cx="1093" cy="194" r="0.8" fill="#fff"/>
+
+      <!-- Sparkles -->
+      <g class="sparkle" fill="#fff8ee">
+        <path d="M 1020 130 L 1023 137 L 1030 140 L 1023 143 L 1020 150 L 1017 143 L 1010 140 L 1017 137 Z"/>
+      </g>
+      <g class="sparkle-2" fill="#fff8ee">
+        <path d="M 1160 250 L 1162 255 L 1167 257 L 1162 259 L 1160 264 L 1158 259 L 1153 257 L 1158 255 Z"/>
+      </g>
+      <g class="sparkle-3" fill="#fff8ee">
+        <path d="M 980 200 L 982 205 L 987 207 L 982 209 L 980 214 L 978 209 L 973 207 L 978 205 Z"/>
+      </g>
+
+      <!-- Clouds -->
+      <g class="cloud-1" filter="url(#soft-shadow)">
+        <ellipse cx="200" cy="140" rx="55" ry="22" fill="#fffaf0"/>
+        <ellipse cx="170" cy="130" rx="35" ry="20" fill="#fffaf0"/>
+        <ellipse cx="230" cy="128" rx="40" ry="22" fill="#fffaf0"/>
+        <ellipse cx="200" cy="118" rx="28" ry="18" fill="#fffaf0"/>
+      </g>
+      <g class="cloud-2" filter="url(#soft-shadow)">
+        <ellipse cx="500" cy="200" rx="48" ry="18" fill="#fffaf0"/>
+        <ellipse cx="475" cy="192" rx="30" ry="16" fill="#fffaf0"/>
+        <ellipse cx="525" cy="190" rx="35" ry="18" fill="#fffaf0"/>
+        <ellipse cx="500" cy="180" rx="22" ry="14" fill="#fffaf0"/>
+      </g>
+      <g class="cloud-3" filter="url(#soft-shadow)">
+        <ellipse cx="780" cy="105" rx="42" ry="16" fill="#fffaf0"/>
+        <ellipse cx="760" cy="98" rx="26" ry="14" fill="#fffaf0"/>
+        <ellipse cx="800" cy="96" rx="30" ry="15" fill="#fffaf0"/>
+      </g>
+
+      <g class="bird" opacity="0.5">
+        <path d="M 0 250 Q 8 244 16 250 Q 24 244 32 250" stroke="#a98090" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </g>
+
+      <!-- Distant hills -->
+      <path d="M 0 500 Q 200 440 400 480 Q 600 510 800 470 Q 1000 440 1200 490 L 1200 540 L 0 540 Z" fill="#d8c8e8" opacity="0.5"/>
+      <path d="M 0 520 Q 250 480 500 510 Q 750 530 1000 500 Q 1100 490 1200 510 L 1200 540 L 0 540 Z" fill="#c8b8d8" opacity="0.4"/>
+
+      <!-- Water -->
+      <rect x="0" y="530" width="1200" height="320" fill="url(#waterGrad)"/>
+
+      <!-- Water sparkles -->
+      <g class="sparkle" fill="#fff" opacity="0.7">
+        <circle cx="200" cy="600" r="2"/>
+        <circle cx="900" cy="640" r="2"/>
+      </g>
+      <g class="sparkle-2" fill="#fff" opacity="0.7">
+        <circle cx="350" cy="660" r="2"/>
+        <circle cx="1050" cy="680" r="2"/>
+      </g>
+      <g class="sparkle-3" fill="#fff" opacity="0.7">
+        <circle cx="150" cy="700" r="2"/>
+        <circle cx="750" cy="620" r="2"/>
+      </g>
+
+      <!-- ====== BACK wave: behind the boat (gives depth, runs across hull's back) ====== -->
+      <g class="wave-1" opacity="0.55">
+        <path d="M -120 600 Q -60 588 0 600 T 120 600 T 240 600 T 360 600 T 480 600 T 600 600 T 720 600 T 840 600 T 960 600 T 1080 600 T 1200 600 T 1320 600 V 620 H -120 Z" fill="#a5d0dd"/>
+        <path d="M -120 600 Q -60 588 0 600 T 120 600 T 240 600 T 360 600 T 480 600 T 600 600 T 720 600 T 840 600 T 960 600 T 1080 600 T 1200 600 T 1320 600" stroke="#fff" stroke-width="2" fill="none" opacity="0.5"/>
+      </g>
+
+      <!-- ====== BOAT GROUP ====== -->
+      <g class="boat-group">
+
+        <!-- Mast & sails -->
+        <rect x="595" y="340" width="10" height="240" fill="#a47858" rx="3"/>
+        <path d="M 605 350 Q 680 410 680 530 L 605 530 Z" fill="url(#sailGrad)" stroke="#e8c4a0" stroke-width="2"/>
+        <path d="M 595 350 Q 520 410 520 530 L 595 530 Z" fill="url(#sailGrad2)" stroke="#e8c4a0" stroke-width="2"/>
+        <path d="M 605 410 Q 660 415 670 460" stroke="#fde8e4" stroke-width="6" fill="none" opacity="0.7"/>
+        <path d="M 595 410 Q 540 415 530 460" stroke="#fff" stroke-width="6" fill="none" opacity="0.5"/>
+        <path d="M 605 340 L 645 350 L 605 360 Z" fill="#f49580"/>
+        <circle cx="600" cy="340" r="5" fill="#ffe4a8"/>
+        <path d="M 618 348 C 618 346 620 345 622 346 C 624 345 626 346 626 348 C 626 350 622 354 622 354 C 622 354 618 350 618 348 Z" fill="#fff8ee"/>
+
+        <!-- ========== GIRAFFE ========== -->
+        <g class="giraffe">
+          <!-- Body (seated lower in the boat) -->
+          <ellipse cx="480" cy="558" rx="32" ry="26" fill="url(#giraffeShade)"/>
+          <ellipse cx="475" cy="553" rx="18" ry="13" fill="#ffeccc" opacity="0.5"/>
+          <!-- Neck -->
+          <path d="M 485 543 Q 490 488 500 448 Q 510 418 510 398" stroke="#ffd89c" stroke-width="22" fill="none" stroke-linecap="round"/>
+          <path d="M 488 543 Q 493 493 502 453 Q 510 426 510 406" stroke="#ffe0ac" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+          <!-- Head (more rounded, snout points forward) -->
+          <ellipse cx="510" cy="388" rx="19" ry="17" fill="url(#giraffeShade)"/>
+          <!-- Snout / muzzle area -->
+          <ellipse cx="515" cy="398" rx="13" ry="9" fill="#ffe8d0"/>
+          <!-- Nostrils -->
+          <ellipse cx="510" cy="398" rx="1.2" ry="1.8" fill="#a47858"/>
+          <ellipse cx="520" cy="398" rx="1.2" ry="1.8" fill="#a47858"/>
+          <!-- Smile -->
+          <path d="M 512 406 Q 515 409 518 406" stroke="#a47858" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+          <!-- Spots -->
+          <ellipse cx="475" cy="553" rx="5" ry="4" fill="#e8a868" opacity="0.7"/>
+          <ellipse cx="488" cy="566" rx="4" ry="3.5" fill="#e8a868" opacity="0.7"/>
+          <ellipse cx="495" cy="508" rx="4" ry="4" fill="#e8a868" opacity="0.7"/>
+          <ellipse cx="503" cy="468" rx="4" ry="3.5" fill="#e8a868" opacity="0.7"/>
+          <ellipse cx="508" cy="433" rx="3.5" ry="3" fill="#e8a868" opacity="0.7"/>
+
+          <!-- Ossicones -->
+          <ellipse cx="502" cy="370" rx="2.5" ry="7" fill="#ffd89c"/>
+          <ellipse cx="518" cy="370" rx="2.5" ry="7" fill="#ffd89c"/>
+          <circle cx="502" cy="365" r="3" fill="#8a6848"/>
+          <circle cx="518" cy="365" r="3" fill="#8a6848"/>
+
+          <!-- Ears -->
+          <ellipse cx="492" cy="382" rx="6" ry="4" fill="#ffd89c" transform="rotate(-35 492 382)"/>
+          <ellipse cx="528" cy="382" rx="6" ry="4" fill="#ffd89c" transform="rotate(35 528 382)"/>
+          <ellipse cx="492" cy="382" rx="3" ry="2" fill="#ffb898" transform="rotate(-35 492 382)"/>
+          <ellipse cx="528" cy="382" rx="3" ry="2" fill="#ffb898" transform="rotate(35 528 382)"/>
+
+          <!-- Eyes (positioned symmetrically on face) -->
+          <ellipse class="eye-blink" cx="504" cy="388" rx="3" ry="4" fill="#5a4a52"/>
+          <ellipse class="eye-blink" cx="516" cy="388" rx="3" ry="4" fill="#5a4a52"/>
+          <!-- Eye highlights -->
+          <circle cx="505" cy="386.5" r="1" fill="#fff"/>
+          <circle cx="517" cy="386.5" r="1" fill="#fff"/>
+          <!-- Eyelashes -->
+          <path d="M 501 385 L 499 383" stroke="#5a4a52" stroke-width="0.8" stroke-linecap="round"/>
+          <path d="M 519 385 L 521 383" stroke="#5a4a52" stroke-width="0.8" stroke-linecap="round"/>
+
+          <!-- Blush -->
+          <ellipse cx="497" cy="396" rx="3.5" ry="2.2" fill="#ffb8b8" opacity="0.65"/>
+          <ellipse cx="524" cy="396" rx="3.5" ry="2.2" fill="#ffb8b8" opacity="0.65"/>
+
+          <!-- Mane tufts -->
+          <path d="M 498 378 Q 496 372 498 366 Q 500 372 498 378" fill="#e8a868"/>
+          <path d="M 504 376 Q 502 370 504 364 Q 506 370 504 376" fill="#e8a868"/>
+
+          <!-- THOUGHT BUBBLE: anchored above giraffe's head -->
+          <g transform="translate(420 298)">
+            <g id="bubble-giraffe" class="thought-bubble" filter="url(#bubble-shadow)">
+              <circle cx="100" cy="46" r="3" fill="#fffaf2" fill-opacity="0.85" stroke="#e8d8e0" stroke-width="1" stroke-opacity="0.7"/>
+              <circle cx="108" cy="38" r="4.5" fill="#fffaf2" fill-opacity="0.85" stroke="#e8d8e0" stroke-width="1" stroke-opacity="0.7"/>
+              <rect x="0" y="-8" width="120" height="42" rx="21" fill="#fffaf2" fill-opacity="0.88" stroke="#e8d8e0" stroke-width="1.2" stroke-opacity="0.7"/>
+              <text id="bubble-giraffe-text" x="60" y="18" text-anchor="middle" font-family="Quicksand, sans-serif" font-size="13" font-weight="600" fill="#5a4a52">...</text>
+            </g>
+          </g>
+        </g>
+
+        <!-- ========== MONKEY ========== -->
+        <g class="monkey">
+          <!-- Body (seated lower in the boat) -->
+          <ellipse cx="600" cy="565" rx="30" ry="26" fill="url(#monkeyShade)"/>
+          <ellipse cx="600" cy="572" rx="20" ry="16" fill="#f4e0c8"/>
+
+          <!-- Head -->
+          <circle cx="600" cy="520" r="27" fill="url(#monkeyShade)"/>
+          <!-- Heart-shaped face patch -->
+          <path d="M 600 510 Q 583 510 583 526 Q 583 540 600 546 Q 617 540 617 526 Q 617 510 600 510 Z" fill="#f4dcb4"/>
+
+          <!-- Ears -->
+          <circle cx="577" cy="514" r="9" fill="url(#monkeyShade)"/>
+          <circle cx="623" cy="514" r="9" fill="url(#monkeyShade)"/>
+          <circle cx="577" cy="514" r="5" fill="#f4dcb4"/>
+          <circle cx="623" cy="514" r="5" fill="#f4dcb4"/>
+
+          <!-- Eyes -->
+          <ellipse class="eye-blink-2" cx="592" cy="524" rx="3.5" ry="4.5" fill="#5a4a52"/>
+          <ellipse class="eye-blink-2" cx="608" cy="524" rx="3.5" ry="4.5" fill="#5a4a52"/>
+          <circle cx="593" cy="522" r="1.3" fill="#fff"/>
+          <circle cx="609" cy="522" r="1.3" fill="#fff"/>
+          <!-- Eyelashes -->
+          <path d="M 588 521 L 585 519" stroke="#5a4a52" stroke-width="0.8" stroke-linecap="round"/>
+          <path d="M 612 521 L 615 519" stroke="#5a4a52" stroke-width="0.8" stroke-linecap="round"/>
+
+          <!-- Nose -->
+          <ellipse cx="600" cy="532" rx="1.8" ry="1.2" fill="#8a6848"/>
+
+          <!-- Mouth -->
+          <path d="M 595 538 Q 600 543 605 538" stroke="#8a6848" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+
+          <!-- Blush -->
+          <ellipse cx="584" cy="534" rx="4" ry="2.6" fill="#ffb8b8" opacity="0.6"/>
+          <ellipse cx="616" cy="534" rx="4" ry="2.6" fill="#ffb8b8" opacity="0.6"/>
+
+          <!-- Head tuft -->
+          <path d="M 594 496 Q 600 489 606 496" stroke="#a48868" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+
+          <!-- Arms -->
+          <ellipse cx="572" cy="562" rx="8" ry="14" fill="url(#monkeyShade)" transform="rotate(-20 572 562)"/>
+          <ellipse cx="628" cy="562" rx="8" ry="14" fill="url(#monkeyShade)" transform="rotate(20 628 562)"/>
+          <circle cx="568" cy="572" r="5" fill="#b89878"/>
+          <circle cx="632" cy="572" r="5" fill="#b89878"/>
+
+          <!-- THOUGHT BUBBLE: anchored above monkey's head -->
+          <g transform="translate(520 430)">
+            <g id="bubble-monkey" class="thought-bubble" filter="url(#bubble-shadow)">
+              <circle cx="100" cy="46" r="3" fill="#fffaf2" fill-opacity="0.85" stroke="#e8d8e0" stroke-width="1" stroke-opacity="0.7"/>
+              <circle cx="108" cy="38" r="4.5" fill="#fffaf2" fill-opacity="0.85" stroke="#e8d8e0" stroke-width="1" stroke-opacity="0.7"/>
+              <rect x="0" y="-8" width="160" height="42" rx="21" fill="#fffaf2" fill-opacity="0.88" stroke="#e8d8e0" stroke-width="1.2" stroke-opacity="0.7"/>
+              <text id="bubble-monkey-text" x="80" y="18" text-anchor="middle" font-family="Quicksand, sans-serif" font-size="13" font-weight="600" fill="#5a4a52">...</text>
+            </g>
+          </g>
+        </g>
+
+        <!-- ========== PIG (refined, centered face) ========== -->
+        <g class="pig">
+          <!-- Body -->
+          <ellipse cx="710" cy="548" rx="36" ry="28" fill="url(#pigShade)"/>
+          <ellipse cx="710" cy="555" rx="24" ry="17" fill="#ffe0e8" opacity="0.6"/>
+
+          <!-- Head (centered above body) -->
+          <circle cx="725" cy="520" r="26" fill="url(#pigShade)"/>
+
+          <!-- Ears (symmetric, floppy on top) -->
+          <path d="M 707 503 Q 704 494 712 497 Q 716 502 715 510 Z" fill="#f4b4c4"/>
+          <path d="M 743 503 Q 746 494 738 497 Q 734 502 735 510 Z" fill="#f4b4c4"/>
+          <path d="M 707 503 Q 706 498 711 500 Q 714 503 713 508 Z" fill="#ffaec0"/>
+          <path d="M 743 503 Q 744 498 739 500 Q 736 503 737 508 Z" fill="#ffaec0"/>
+
+          <!-- Snout (centered, slightly below eyes) -->
+          <ellipse cx="725" cy="528" rx="11" ry="8" fill="#ffaec0" stroke="#e89bb0" stroke-width="0.8"/>
+          <!-- Nostrils -->
+          <ellipse cx="721.5" cy="528" rx="1.5" ry="2" fill="#c87080"/>
+          <ellipse cx="728.5" cy="528" rx="1.5" ry="2" fill="#c87080"/>
+
+          <!-- Eyes (symmetric, above and on each side of snout) -->
+          <ellipse class="eye-blink-3" cx="716" cy="517" rx="3" ry="4" fill="#5a4a52"/>
+          <ellipse class="eye-blink-3" cx="734" cy="517" rx="3" ry="4" fill="#5a4a52"/>
+          <circle cx="717" cy="515.5" r="1" fill="#fff"/>
+          <circle cx="735" cy="515.5" r="1" fill="#fff"/>
+          <!-- Eyelashes -->
+          <path d="M 712 515 L 710 513" stroke="#5a4a52" stroke-width="0.8" stroke-linecap="round"/>
+          <path d="M 738 515 L 740 513" stroke="#5a4a52" stroke-width="0.8" stroke-linecap="round"/>
+
+          <!-- Cheeks (symmetric blush) -->
+          <ellipse cx="706" cy="527" rx="5" ry="3" fill="#ff9eb4" opacity="0.55"/>
+          <ellipse cx="744" cy="527" rx="5" ry="3" fill="#ff9eb4" opacity="0.55"/>
+
+          <!-- Smile -->
+          <path d="M 720 538 Q 725 541 730 538" stroke="#c87080" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+          <!-- Curly tail -->
+          <path d="M 678 540 Q 670 538 672 544 Q 678 548 672 552 Q 666 552 670 558" stroke="#ffaec0" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+
+          <!-- Feet (peeking) -->
+          <ellipse cx="695" cy="572" rx="5" ry="3" fill="#ffaec0"/>
+          <ellipse cx="720" cy="572" rx="5" ry="3" fill="#ffaec0"/>
+
+          <!-- THOUGHT BUBBLE: anchored above pig's head -->
+          <g transform="translate(675 430)">
+            <g id="bubble-pig" class="thought-bubble" filter="url(#bubble-shadow)">
+              <circle cx="40" cy="46" r="3" fill="#fffaf2" fill-opacity="0.85" stroke="#e8d8e0" stroke-width="1" stroke-opacity="0.7"/>
+              <circle cx="48" cy="38" r="4.5" fill="#fffaf2" fill-opacity="0.85" stroke="#e8d8e0" stroke-width="1" stroke-opacity="0.7"/>
+              <rect x="0" y="-8" width="170" height="42" rx="21" fill="#fffaf2" fill-opacity="0.88" stroke="#e8d8e0" stroke-width="1.2" stroke-opacity="0.7"/>
+              <text id="bubble-pig-text" x="85" y="18" text-anchor="middle" font-family="Quicksand, sans-serif" font-size="13" font-weight="600" fill="#5a4a52">...</text>
+            </g>
+          </g>
+        </g>
+
+        <!-- ========== Boat hull (drawn ABOVE animal lower bodies but BELOW front waves) ========== -->
+        <g filter="url(#boat-shadow)">
+          <!-- Lower hull (rounded curve, more boat-like) -->
+          <path d="M 420 558 Q 600 590 780 558 L 750 660 Q 600 685 450 660 Z" fill="url(#boatGradDark)" stroke="#7a5638" stroke-width="2"/>
+          <!-- Lighter band on hull -->
+          <path d="M 420 558 Q 600 590 780 558 L 770 590 Q 600 612 430 590 Z" fill="url(#boatGrad)"/>
+          <!-- Wood plank lines on hull -->
+          <path d="M 440 610 Q 600 632 760 610" stroke="#7a5638" stroke-width="1.2" fill="none" opacity="0.35"/>
+          <path d="M 448 638 Q 600 660 752 638" stroke="#7a5638" stroke-width="1.2" fill="none" opacity="0.35"/>
+          <!-- Top rim of boat -->
+          <path d="M 416 555 Q 600 587 784 555 L 782 568 Q 600 600 418 568 Z" fill="#e8c4a0" stroke="#a47858" stroke-width="1.5"/>
+          <!-- Rivets / dots on rim -->
+          <circle cx="460" cy="572" r="2" fill="#8a6848" opacity="0.5"/>
+          <circle cx="540" cy="582" r="2" fill="#8a6848" opacity="0.5"/>
+          <circle cx="660" cy="582" r="2" fill="#8a6848" opacity="0.5"/>
+          <circle cx="740" cy="572" r="2" fill="#8a6848" opacity="0.5"/>
+          <!-- Heart on hull -->
+          <path d="M 590 622 C 590 617 595 615 600 619 C 605 615 610 617 610 622 C 610 629 600 640 600 640 C 600 640 590 629 590 622 Z" fill="#f49580" opacity="0.55"/>
+        </g>
+      </g>
+
+      <!-- ====== FRONT waves: drawn AFTER the boat so they cover the lower hull ====== -->
+      <g class="wave-2" opacity="0.85">
+        <path d="M -120 645 Q -60 628 0 645 T 120 645 T 240 645 T 360 645 T 480 645 T 600 645 T 720 645 T 840 645 T 960 645 T 1080 645 T 1200 645 T 1320 645 V 720 H -120 Z" fill="#88bccc"/>
+        <path d="M -120 645 Q -60 628 0 645 T 120 645 T 240 645 T 360 645 T 480 645 T 600 645 T 720 645 T 840 645 T 960 645 T 1080 645 T 1200 645 T 1320 645" stroke="#fff" stroke-width="2.5" fill="none" opacity="0.55"/>
+      </g>
+
+      <g class="wave-3" opacity="0.95">
+        <path d="M -120 740 Q -60 722 0 740 T 120 740 T 240 740 T 360 740 T 480 740 T 600 740 T 720 740 T 840 740 T 960 740 T 1080 740 T 1200 740 T 1320 740 V 820 H -120 Z" fill="#6a9eb0"/>
+        <path d="M -120 740 Q -60 722 0 740 T 120 740 T 240 740 T 360 740 T 480 740 T 600 740 T 720 740 T 840 740 T 960 740 T 1080 740 T 1200 740 T 1320 740" stroke="#fff" stroke-width="3" fill="none" opacity="0.4"/>
+      </g>
+
+      <!-- Foam right where the boat meets the water -->
+      <g opacity="0.7">
+        <ellipse cx="440" cy="640" rx="22" ry="5" fill="#fff"/>
+        <ellipse cx="760" cy="640" rx="22" ry="5" fill="#fff"/>
+        <circle cx="420" cy="648" r="3" fill="#fff"/>
+        <circle cx="780" cy="648" r="3" fill="#fff"/>
+        <circle cx="408" cy="654" r="2" fill="#fff"/>
+        <circle cx="792" cy="654" r="2" fill="#fff"/>
+      </g>
+
+      <g opacity="0.5">
+        <circle cx="350" cy="700" r="3" fill="#fff"/>
+        <circle cx="362" cy="708" r="2" fill="#fff"/>
+        <circle cx="858" cy="695" r="3" fill="#fff"/>
+        <circle cx="850" cy="703" r="2" fill="#fff"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Overlay UI -->
+  <div class="overlay">
+    <div class="header">
+      <h1 class="counter"><span class="number" id="dayNumber">0</span> <span id="daysLabel">Days</span> Since Last Arkie Hang</h1>
+      <p class="subtitle">when did the arkies last set sail together? ⚓</p>
+    </div>
+    <button class="hang-btn" id="hangBtn">Last Arkie Hang</button>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h2>When did Arkies last hang?</h2>
+      <div class="modal-actions">
+        <button class="primary" id="todayBtn">Today</button>
+        <span class="or-divider">or pick a date</span>
+        <input type="date" id="dateInput" />
+        <button class="primary" id="confirmDateBtn">Set date</button>
+        <button class="secondary" id="cancelBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ===== Counter logic =====
+  const dayNumberEl = document.getElementById('dayNumber');
+  const daysLabelEl = document.getElementById('daysLabel');
+  const hangBtn = document.getElementById('hangBtn');
+  const modal = document.getElementById('modalBackdrop');
+  const todayBtn = document.getElementById('todayBtn');
+  const dateInput = document.getElementById('dateInput');
+  const confirmDateBtn = document.getElementById('confirmDateBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+
+  const STORAGE_KEY = 'arkie:lastHang';
+  // API base: same origin by default. If you host the API elsewhere, set this to e.g.
+  // "https://your-api.example.com" — leave as empty string when the API is served from the same origin.
+  const API_BASE = '';
+  let lastHangCache = null;
+
+  function todayLocalISO() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function daysSince(isoDate) {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const past = new Date(y, m - 1, d);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffMs = today - past;
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  }
+
+  // Shared, cross-user persistence via the backend API.
+  async function loadLastHang() {
+    try {
+      const res = await fetch(API_BASE + '/api/hang', { cache: 'no-store' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.lastHang || null;
+    } catch (e) {
+      console.warn('Could not load shared counter', e);
+      return null;
+    }
+  }
+
+  async function saveLastHang(isoDate) {
+    try {
+      await fetch(API_BASE + '/api/hang', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lastHang: isoDate })
+      });
+    } catch (e) {
+      console.error('Could not save shared counter', e);
+    }
+  }
+
+  function renderCount(n) {
+    dayNumberEl.textContent = n;
+    daysLabelEl.textContent = (n === 1) ? 'Day' : 'Days';
+  }
+
+  function refreshFromCache() {
+    if (!lastHangCache) {
+      renderCount(0);
+    } else {
+      renderCount(daysSince(lastHangCache));
+    }
+  }
+
+  async function syncFromStorage() {
+    const stored = await loadLastHang();
+    if (stored && stored !== lastHangCache) {
+      lastHangCache = stored;
+      refreshFromCache();
+    } else if (stored) {
+      refreshFromCache();
+    } else if (!lastHangCache) {
+      refreshFromCache();
+    }
+  }
+
+  async function initCounter() {
+    await syncFromStorage();
+    // Poll periodically so updates from other users appear without a manual refresh.
+    // Also catches day-rollover at midnight.
+    setInterval(syncFromStorage, 30000);
+  }
+
+  function openModal() {
+    dateInput.value = lastHangCache || todayLocalISO();
+    dateInput.max = todayLocalISO();
+    modal.classList.add('open');
+  }
+
+  function closeModal() {
+    modal.classList.remove('open');
+  }
+
+  hangBtn.addEventListener('click', openModal);
+  cancelBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  todayBtn.addEventListener('click', () => {
+    const iso = todayLocalISO();
+    lastHangCache = iso;
+    refreshFromCache();
+    closeModal();
+    saveLastHang(iso);
+  });
+
+  confirmDateBtn.addEventListener('click', () => {
+    if (!dateInput.value) return;
+    let iso = dateInput.value;
+    if (iso > todayLocalISO()) iso = todayLocalISO();
+    lastHangCache = iso;
+    refreshFromCache();
+    closeModal();
+    saveLastHang(iso);
+  });
+
+  initCounter();
+
+  // ===== Thought bubbles =====
+  const thoughts = {
+    giraffe: ["I'm sleepy", "Oh really?"],
+    monkey: ["Let's climb at vital", "I can make you coffee"],
+    pig: ["I want boba", "I slept at 3am last night"]
+  };
+
+  const bubbles = {
+    giraffe: { g: document.getElementById('bubble-giraffe'), text: document.getElementById('bubble-giraffe-text'), idx: 0 },
+    monkey:  { g: document.getElementById('bubble-monkey'),  text: document.getElementById('bubble-monkey-text'),  idx: 0 },
+    pig:     { g: document.getElementById('bubble-pig'),     text: document.getElementById('bubble-pig-text'),     idx: 0 }
+  };
+
+  function showBubble(animal) {
+    const b = bubbles[animal];
+    const phrases = thoughts[animal];
+    b.text.textContent = phrases[b.idx % phrases.length];
+    b.idx++;
+    // Restart the animation
+    b.g.classList.remove('show');
+    // force reflow so animation can replay
+    void b.g.getBoundingClientRect();
+    b.g.classList.add('show');
+  }
+
+  function scheduleBubble(animal, initialDelay) {
+    setTimeout(function loop() {
+      showBubble(animal);
+      // The bubble animation is 4s; wait 3-7s after it finishes before the next one
+      const nextDelay = 4000 + 3000 + Math.random() * 4000;
+      setTimeout(loop, nextDelay);
+    }, initialDelay);
+  }
+
+  // Stagger the three so they don't all pop at once
+  scheduleBubble('giraffe', 1200);
+  scheduleBubble('monkey',  3600);
+  scheduleBubble('pig',     6000);
+</script>
+</body>
+</html>
