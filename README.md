@@ -2,121 +2,49 @@
 
 A single-page site that tracks days since the last Arkie hang. The counter is shared across all visitors — anyone updating it from any computer sees the same number.
 
-## Files
-
-- `index.html` — the front-end (full-bleed animated boat scene + counter + modal)
-- `server.js` — tiny Express server that serves `index.html` and exposes `/api/hang`
-- `package.json` — Node dependencies (just Express)
-- `Dockerfile` — optional, for container-based hosts
-- `data/hang.json` — created automatically on first update; this is the persisted state
-
 ## How it works
 
-- `GET /api/hang` returns `{ "lastHang": "YYYY-MM-DD" | null }`
-- `POST /api/hang` with body `{ "lastHang": "YYYY-MM-DD" }` saves the date
-- The front-end polls every 30 seconds so updates from one user appear for others without a manual refresh
-- All visitors share the same counter (no per-user storage)
+The date is stored in **Cloud Firestore** (project `arkhang-74922`), in a single shared document:
+
+```
+arkie/hang  ->  { lastHang: "YYYY-MM-DD", updatedAt: <server timestamp> }
+```
+
+- On load, the page subscribes to that document with `onSnapshot`, so when anyone sets a new date, every open page updates **in realtime** — no polling, no refresh needed.
+- Setting a date writes `lastHang` plus a `serverTimestamp()` so the update time is recorded accurately by Firebase's servers, not the visitor's clock.
+- The last known date is also cached in `localStorage` so the counter paints instantly on reload while Firestore connects.
+- The count re-renders every minute so it rolls over correctly at midnight.
+
+Because the backend is Firestore, the site is fully static — it works as-is on GitHub Pages (already set up via `.github/workflows/static.yml`), Netlify, Vercel, etc. No server or persistent disk needed.
+
+## Files
+
+- `index.html` — the front-end (animated boat scene + counter + modal + Firebase/Firestore wiring)
+- `firestore.rules` — Firestore security rules for the counter document
+- `.github/workflows/static.yml` — deploys the site to GitHub Pages
+- `server.js`, `package.json`, `Dockerfile` — **legacy** Express/JSON-file backend, no longer used by the front-end; kept for reference
+
+## Firebase setup (one-time)
+
+1. In the [Firebase console](https://console.firebase.google.com/project/arkhang-74922), go to **Build → Firestore Database** and click **Create database** (production mode, any region) if you haven't already.
+2. Go to the **Rules** tab and paste in the contents of `firestore.rules`, then **Publish**. (Or with the Firebase CLI: `firebase deploy --only firestore:rules`.)
+3. In **Project settings → General → Your apps**, make sure your web app is registered (it is — the config in `index.html` came from there).
+4. If Firebase complains about unauthorized domains, add your GitHub Pages domain under **Authentication → Settings → Authorized domains** (only needed if you add auth later; plain Firestore reads/writes don't require it).
+
+### What the rules allow
+
+- **Anyone can read** the counter (it's a public page).
+- **Anyone can write** the date, but *only* in the exact shape the app uses: a `lastHang` string matching `YYYY-MM-DD` plus `updatedAt` that must equal the server's time (`serverTimestamp()`), so clients can't spoof the update time or stuff arbitrary data in.
+- The document can't be deleted, and every other path in the database is locked down.
+
+If random-stranger writes ever become a problem, the next step up is enabling **Anonymous Authentication** and requiring `request.auth != null` in the rules, or gating writes behind Firebase **App Check**.
 
 ## Run locally
 
-```bash
-npm install
-npm start
-```
-
-Then open http://localhost:3000
-
-## Deploy
-
-You need a host that runs Node and gives you persistent disk for `data/hang.json`. Pick one:
-
-### Option 1 — Render.com (easiest, free tier available)
-
-1. Push these files to a GitHub repo.
-2. On Render, create a new **Web Service**, point it at the repo.
-3. Build command: `npm install` — Start command: `npm start`.
-4. Add a **Disk**: mount path `/data`, size 1 GB is plenty.
-5. Add an env var: `DATA_DIR=/data`.
-6. Deploy. Done.
-
-### Option 2 — Fly.io
+It's a static page — open `index.html` directly, or serve it with any static server:
 
 ```bash
-fly launch          # accept defaults, don't deploy yet
-fly volumes create arkie_data --size 1
+npx serve .
 ```
 
-Edit `fly.toml` to mount the volume and set the env var:
-
-```toml
-[env]
-  DATA_DIR = "/data"
-
-[mounts]
-  source = "arkie_data"
-  destination = "/data"
-```
-
-Then:
-
-```bash
-fly deploy
-```
-
-### Option 3 — Railway
-
-1. New project from this repo.
-2. Add a **Volume**, mount path `/data`.
-3. Set env var `DATA_DIR=/data`.
-4. Deploy.
-
-### Option 4 — Any VPS (DigitalOcean, Hetzner, Linode, etc.)
-
-```bash
-# on the server
-git clone <your-repo> && cd <repo>
-npm install
-# run under a process manager so it restarts on crash / reboot
-npm install -g pm2
-pm2 start server.js --name arkie
-pm2 save
-pm2 startup
-```
-
-Put nginx or Caddy in front of it for HTTPS. For Caddy, the entire config is:
-
-```
-arkie.yourdomain.com {
-    reverse_proxy localhost:3000
-}
-```
-
-### Option 5 — Docker (works on Fly, Railway, any Docker host)
-
-```bash
-docker build -t arkie-hang .
-docker run -d -p 3000:3000 -v arkie-data:/data arkie-hang
-```
-
-## Important: persistent disk
-
-The counter date is stored in a plain JSON file at `$DATA_DIR/hang.json`. **If your host's filesystem resets on every deploy** (Heroku-style ephemeral filesystems, free Render without a disk, Vercel/Netlify functions without storage), the counter will reset too.
-
-Make sure your host either:
-- gives you a persistent disk volume that you mount and point `DATA_DIR` at, **or**
-- you swap the file-based persistence in `server.js` for a database (Postgres, Redis, etc.) — the API surface is just two endpoints, so this is a small change.
-
-## Hosting just the front-end somewhere else
-
-If you host `index.html` on a static-only host (GitHub Pages, Netlify, Vercel without functions) and run the API on a different domain, edit one line at the top of the `<script>` in `index.html`:
-
-```js
-const API_BASE = 'https://your-api-host.example.com';
-```
-
-And in `server.js`, you'll need to add CORS. Install `cors` (`npm i cors`) and add near the top of `server.js`:
-
-```js
-const cors = require('cors');
-app.use(cors({ origin: 'https://your-frontend.example.com' }));
-```
+The counter talks straight to Firestore, so localhost works out of the box.

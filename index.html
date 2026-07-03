@@ -801,7 +801,29 @@
     </div>
   </div>
 
-<script>
+<script type="module">
+  // ===== Firebase / Firestore backend =====
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+  import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+  import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDWT1yXPDBsprkmKh49PDwgVgO0cTV06RM",
+    authDomain: "arkhang-74922.firebaseapp.com",
+    projectId: "arkhang-74922",
+    storageBucket: "arkhang-74922.firebasestorage.app",
+    messagingSenderId: "403742979351",
+    appId: "1:403742979351:web:62fab4bbbdbc6dd51f3352",
+    measurementId: "G-3Y045VVDWD"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  analyticsSupported().then((ok) => { if (ok) getAnalytics(app); }).catch(() => {});
+
+  // Everyone shares one document: arkie/hang -> { lastHang: "YYYY-MM-DD", updatedAt: <server time> }
+  const hangDocRef = doc(db, 'arkie', 'hang');
+
   // ===== Counter logic =====
   const dayNumberEl = document.getElementById('dayNumber');
   const daysLabelEl = document.getElementById('daysLabel');
@@ -812,11 +834,9 @@
   const confirmDateBtn = document.getElementById('confirmDateBtn');
   const cancelBtn = document.getElementById('cancelBtn');
 
+  // Local cache so the counter paints instantly on reload while Firestore connects.
   const STORAGE_KEY = 'arkie:lastHang';
-  // API base: same origin by default. If you host the API elsewhere, set this to e.g.
-  // "https://your-api.example.com" — leave as empty string when the API is served from the same origin.
-  const API_BASE = '';
-  let lastHangCache = null;
+  let lastHangCache = localStorage.getItem(STORAGE_KEY) || null;
 
   function todayLocalISO() {
     const d = new Date();
@@ -835,26 +855,13 @@
     return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
   }
 
-  // Shared, cross-user persistence via the backend API.
-  async function loadLastHang() {
-    try {
-      const res = await fetch(API_BASE + '/api/hang', { cache: 'no-store' });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.lastHang || null;
-    } catch (e) {
-      console.warn('Could not load shared counter', e);
-      return null;
-    }
+  function isValidISODate(s) {
+    return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
   }
 
   async function saveLastHang(isoDate) {
     try {
-      await fetch(API_BASE + '/api/hang', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lastHang: isoDate })
-      });
+      await setDoc(hangDocRef, { lastHang: isoDate, updatedAt: serverTimestamp() });
     } catch (e) {
       console.error('Could not save shared counter', e);
     }
@@ -873,23 +880,25 @@
     }
   }
 
-  async function syncFromStorage() {
-    const stored = await loadLastHang();
-    if (stored && stored !== lastHangCache) {
-      lastHangCache = stored;
-      refreshFromCache();
-    } else if (stored) {
-      refreshFromCache();
-    } else if (!lastHangCache) {
-      refreshFromCache();
-    }
+  function setLastHang(isoDate) {
+    lastHangCache = isoDate;
+    try { localStorage.setItem(STORAGE_KEY, isoDate); } catch (e) {}
+    refreshFromCache();
   }
 
-  async function initCounter() {
-    await syncFromStorage();
-    // Poll periodically so updates from other users appear without a manual refresh.
-    // Also catches day-rollover at midnight.
-    setInterval(syncFromStorage, 30000);
+  function initCounter() {
+    refreshFromCache();
+    // Realtime: whenever anyone sets a new date, every open page updates instantly.
+    onSnapshot(hangDocRef, (snap) => {
+      const stored = snap.exists() ? snap.data().lastHang : null;
+      if (isValidISODate(stored)) {
+        setLastHang(stored);
+      }
+    }, (e) => {
+      console.warn('Could not load shared counter', e);
+    });
+    // Re-render every minute so the count rolls over at midnight.
+    setInterval(refreshFromCache, 60000);
   }
 
   function openModal() {
@@ -910,8 +919,7 @@
 
   todayBtn.addEventListener('click', () => {
     const iso = todayLocalISO();
-    lastHangCache = iso;
-    refreshFromCache();
+    setLastHang(iso);
     closeModal();
     saveLastHang(iso);
   });
@@ -920,8 +928,7 @@
     if (!dateInput.value) return;
     let iso = dateInput.value;
     if (iso > todayLocalISO()) iso = todayLocalISO();
-    lastHangCache = iso;
-    refreshFromCache();
+    setLastHang(iso);
     closeModal();
     saveLastHang(iso);
   });
